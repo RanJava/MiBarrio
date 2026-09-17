@@ -14,8 +14,6 @@
    - Captcha de verificación del formulario
    - Partículas del hero + estela del cursor (canvas vanilla)
    - Tilt 3D en tarjetas, ondas en botones, toasts
-   - Gestión de reportes: marcar como resuelto y eliminar (con
-     modal de confirmación)
    - Constelación de la iglesia / castillo azul / Casa Dorada en
      la sección "El barrio" (nodos + líneas con transición cíclica)
    ============================================================ */
@@ -56,7 +54,6 @@ let filtroNoticiaActivo = "todas";
 let terminoBusqueda = "";
 let ordenActivo = "recientes";
 let captchaActual = null;
-let idPendienteDeEliminar = null;
 
 /* ============================================================
    Capa de datos
@@ -75,8 +72,6 @@ async function api(url, opciones = {}) {
 
 const apiListarReportes = () => api(`${API}/reportes`).then(r => r.datos);
 const apiCrearReporte = (datos) => api(`${API}/reportes`, { method: "POST", body: JSON.stringify(datos) });
-const apiActualizarEstado = (id, estado) => api(`${API}/reportes/${id}`, { method: "PATCH", body: JSON.stringify({ estado }) });
-const apiEliminarReporte = (id) => api(`${API}/reportes/${id}`, { method: "DELETE" });
 const apiStats = () => api(`${API}/stats`).then(r => r.datos);
 const apiListarNoticias = () => api(`${API}/noticias`).then(r => r.datos);
 const apiObtenerCaptcha = () => api(`${API}/captcha`, { method: "POST" }).then(r => r.datos);
@@ -91,6 +86,13 @@ function formatearFecha(timestamp) {
 
 const reducirMovimiento = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Detección robusta de táctil: maxTouchPoints no sirve en Windows
+// (muchos equipos reportan 10 aunque no tengan pantalla táctil).
+const dispoToque = () =>
+  ("ontouchstart" in window) ||
+  window.matchMedia("(hover: none)").matches ||
+  window.matchMedia("(pointer: coarse)").matches;
 
 function escaparHTML(texto) {
   const div = document.createElement("div");
@@ -180,45 +182,144 @@ function iniciarScenes() {
     return;
   }
 
+  /* Elementos de cada escena, precableados una sola vez (sin re-query). */
+  const sceneSlides = new Map();
+  const sceneCadenas = new Map();
+  escenas.forEach(escena => {
+    sceneSlides.set(escena, Array.from(escena.querySelectorAll("[data-slide]")));
+    sceneCadenas.set(escena, Array.from(escena.querySelectorAll("[data-chain]")));
+  });
+
+  const esMovil = () => window.matchMedia("(max-width: 767px)").matches;
+  const desactivada = () => reducirMovimiento() || esMovil();
+
+  /* En móvil o prefers-reduced-motion no se mueve nada ligado a scroll:
+     el CSS deja el contenido visible con su valor por defecto (--sp: 0.5). */
+  let activas = new Set();
+  let obs = null;
+  let setupeado = false;
+  let apagada = false;
   let rafPedido = null;
-  const actualizar = () => {
-    rafPedido = null;
-    const vh = window.innerHeight;
 
-    const doc = document.documentElement;
-    const maxScroll = doc.scrollHeight - vh;
-    const page = maxScroll > 0 ? clamp01(window.scrollY / maxScroll) : 0;
-    document.documentElement.style.setProperty("--g", page.toFixed(4));
-
+  const apagar = () => {
+    if (apagada) return;
+    apagada = true;
+    setupeado = false;
+    activas.clear();
+    if (obs) { obs.disconnect(); obs = null; }
     escenas.forEach(escena => {
-      const rect = escena.getBoundingClientRect();
-      const sp = clamp01((vh - rect.top) / (vh + rect.height));
-      escena.style.setProperty("--sp", sp.toFixed(4));
-
-      escena.querySelectorAll("[data-slide]").forEach(el => {
-        if (!slides.has(el)) return;
-        const fn = slides.get(el);
-        el.style.transform = fn ? fn(sp) : "";
-        el.style.willChange = "transform";
+      escena.style.removeProperty("--sp");
+      sceneSlides.get(escena).forEach(el => {
+        el.style.transform = "";
+        el.style.willChange = "";
       });
-
-      escena.querySelectorAll("[data-chain]").forEach(el => {
-        const fn = cadenas.get(el);
-        if (fn) {
-          el.style.transform = fn(sp);
-          el.style.willChange = "transform";
-        }
+      sceneCadenas.get(escena).forEach(el => {
+        el.style.transform = "";
+        el.style.willChange = "";
       });
     });
+  };
+
+  /* Posiciones absolutas cacheadas: sin getBoundingClientRect en el scroll.
+     Se refrescan solo en resize, al cargar la página o cuando cambia el layout. */
+  const geoms = new Map();
+  const medirGeometria = () => {
+    const y = window.scrollY || 0;
+    escenas.forEach(escena => {
+      const rect = escena.getBoundingClientRect();
+      geoms.set(escena, { top: rect.top + y, h: rect.height || 1 });
+    });
+  };
+
+  const toggWillChange = (escena, encendido) => {
+    sceneSlides.get(escena).forEach(el => {
+      if (slides.has(el)) el.style.willChange = encendido ? "transform" : "";
+    });
+    sceneCadenas.get(escena).forEach(el => {
+      if (cadenas.has(el)) el.style.willChange = encendido ? "transform" : "";
+    });
+  };
+
+  /* Solo transforma las escenas que el IntersectionObserver marcó como cercanas. */
+  const animarActivas = () => {
+    const vh = window.innerHeight;
+    const scrollY = window.scrollY || 0;
+    activas.forEach(escena => {
+      const g = geoms.get(escena);
+      if (!g) return;
+      const sp = clamp01((vh - (g.top - scrollY)) / (vh + g.h));
+      escena.style.setProperty("--sp", sp.toFixed(4));
+
+      sceneSlides.get(escena).forEach(el => {
+        const fn = slides.get(el);
+        el.style.transform = fn ? fn(sp) : "";
+      });
+      sceneCadenas.get(escena).forEach(el => {
+        const fn = cadenas.get(el);
+        if (fn) el.style.transform = fn(sp);
+      });
+    });
+  };
+
+  const actualizar = () => {
+    rafPedido = null;
+    if (desactivada()) { apagar(); return; }
+    if (apagada) return;
+    animarActivas();
   };
 
   const pedirFrame = () => {
     if (!rafPedido) rafPedido = requestAnimationFrame(actualizar);
   };
 
-  window.addEventListener("scroll", pedirFrame, { passive: true });
-  window.addEventListener("resize", pedirFrame, { passive: true });
-  actualizar();
+  const montar = () => {
+    apagada = false;
+    medirGeometria();
+    obs = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const escena = entry.target;
+        if (entry.isIntersecting) {
+          if (!activas.has(escena)) { activas.add(escena); toggWillChange(escena, true); }
+        } else if (activas.delete(escena)) {
+          toggWillChange(escena, false);
+        }
+      });
+      pedirFrame();
+    }, { threshold: 0.02 });
+    escenas.forEach(escena => obs.observe(escena));
+    setupeado = true;
+    pedirFrame();
+  };
+
+  let ultimoResize = 0;
+  const manejarResize = () => {
+    const ahora = performance.now();
+    if (ahora - ultimoResize < 150) return;
+    ultimoResize = ahora;
+    if (desactivada()) { apagar(); return; }
+    if (!setupeado) montar();
+    else { medirGeometria(); pedirFrame(); }
+  };
+
+window.addEventListener("scroll", pedirFrame, { passive: true });
+  window.addEventListener("resize", manejarResize, { passive: true });
+  window.addEventListener("load", () => {
+    if (desactivada()) return;
+    if (setupeado) { medirGeometria(); pedirFrame(); }
+  }, { passive: true });
+
+  /* El render de tarjetas (estado/noticias) cambia la altura del documento
+     tras cargar los datos: refresca la geometría cacheada. */
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => {
+      if (desactivada() || !setupeado) return;
+      medirGeometria();
+      pedirFrame();
+    }).observe(document.body);
+  }
+
+  if (desactivada()) { apagar(); return; }
+  montar();
 }
 
 /* ============================================================
@@ -342,25 +443,6 @@ function crearTarjetaReporte(reporte) {
   footer.appendChild(estadoSpan);
   footer.appendChild(fecha);
 
-  const acciones = document.createElement("div");
-  acciones.className = "report-actions";
-
-  if (reporte.estado !== "resuelto") {
-    const btnResolver = document.createElement("button");
-    btnResolver.type = "button";
-    btnResolver.className = "btn-small btn-resolve";
-    btnResolver.textContent = "✓ Marcar como resuelto";
-    btnResolver.addEventListener("click", () => marcarComoResuelto(reporte.id));
-    acciones.appendChild(btnResolver);
-  }
-
-  const btnEliminar = document.createElement("button");
-  btnEliminar.type = "button";
-  btnEliminar.className = "btn-small btn-delete";
-  btnEliminar.textContent = "🗑 Eliminar";
-  btnEliminar.addEventListener("click", () => pedirConfirmacionEliminar(reporte.id));
-  acciones.appendChild(btnEliminar);
-
   if (reporte.reportante) {
     const autor = document.createElement("span");
     autor.className = "bento-item__autor";
@@ -373,58 +455,8 @@ function crearTarjetaReporte(reporte) {
   card.appendChild(loc);
   card.appendChild(desc);
   card.appendChild(footer);
-  card.appendChild(acciones);
 
   return card;
-}
-
-/* ---------- Acciones sobre el estado ---------- */
-async function marcarComoResuelto(id) {
-  try {
-    await apiActualizarEstado(id, "resuelto");
-    reportes = await apiListarReportes();
-    render();
-    mostrarToast("Reporte marcado como resuelto. ¡Buena onda vecinal!", "success");
-  } catch (err) {
-    mostrarToast("No se pudo actualizar: " + err.message, "error");
-  }
-}
-
-/* ---------- Eliminar (modal) ---------- */
-function pedirConfirmacionEliminar(id) {
-  idPendienteDeEliminar = id;
-  document.getElementById("modal-overlay").hidden = false;
-}
-
-function cerrarModal() {
-  idPendienteDeEliminar = null;
-  document.getElementById("modal-overlay").hidden = true;
-}
-
-async function confirmarEliminar() {
-  if (!idPendienteDeEliminar) return;
-  const id = idPendienteDeEliminar;
-  const card = document.querySelector(`.bento-item--reporte[data-id="${id}"]`);
-
-  const quitar = async () => {
-    try {
-      await apiEliminarReporte(id);
-      reportes = await apiListarReportes();
-      render();
-      mostrarToast("Reporte eliminado.", "info");
-    } catch (err) {
-      mostrarToast("No se pudo eliminar: " + err.message, "error");
-    }
-  };
-
-  if (card && !reducirMovimiento()) {
-    card.classList.add("is-removing");
-    card.addEventListener("animationend", quitar, { once: true });
-    setTimeout(quitar, 350);
-  } else {
-    quitar();
-  }
-  cerrarModal();
 }
 
 /* ---------- Filtro + búsqueda + orden ---------- */
@@ -707,6 +739,11 @@ function iniciarParticulas() {
   const contenedor = document.getElementById("tsparticles");
   if (!contenedor) return;
 
+  const esMovil = () => window.matchMedia("(max-width: 767px)").matches;
+
+  // Respeto prefers-reduced-motion y móvil/táctil: no se renderiza nada.
+  if (reducirMovimiento() || esMovil() || dispoToque()) return;
+
   const canvas = document.createElement("canvas");
   canvas.className = "hero-particles-canvas";
   contenedor.appendChild(canvas);
@@ -717,9 +754,12 @@ function iniciarParticulas() {
   let particulas = [];
   let cursor = { x: -9e9, y: -9e9 };
   let ultimoResize = 0;
+  let rafId = 0;
+  let corriendo = false;
 
   function dimensionar() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (esMovil() || dispoToque()) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const rect = contenedor.getBoundingClientRect();
     W = Math.max(rect.width, 1);
     H = Math.max(rect.height, 1);
@@ -732,7 +772,7 @@ function iniciarParticulas() {
   }
 
   function crearParticulas() {
-    const objetivo = Math.max(28, Math.min(80, Math.floor((W * H) / 15000)));
+    const objetivo = Math.max(20, Math.min(55, Math.floor((W * H) / 18000)));
     particulas = Array.from({ length: objetivo }, () => ({
       x: Math.random() * W,
       y: Math.random() * H,
@@ -754,12 +794,38 @@ function iniciarParticulas() {
   }, { passive: true });
   window.addEventListener("pointerleave", () => { cursor.x = -9e9; cursor.y = -9e9; }, { passive: true });
 
-  window.addEventListener("resize", () => {
+  const aRedimensionar = () => {
     const ahora = performance.now();
     if (ahora - ultimoResize < 120) return;
     ultimoResize = ahora;
+    if (esMovil() || dispoToque()) { pausar(); return; }
     dimensionar();
-  });
+  };
+  window.addEventListener("resize", aRedimensionar, { passive: true });
+  window.addEventListener("orientationchange", aRedimensionar, { passive: true });
+
+  function pausar() {
+    if (!corriendo) return;
+    corriendo = false;
+    cancelAnimationFrame(rafId);
+    ctx.clearRect(0, 0, W, H);
+  }
+
+  function reanudar() {
+    if (corriendo || esMovil() || dispoToque()) return;
+    corriendo = true;
+    dimensionar();
+    rafId = requestAnimationFrame(paso);
+  }
+
+  // No gastar CPU/GPU cuando el hero sale del viewport.
+  const visibilidad = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) reanudar();
+      else pausar();
+    });
+  }, { threshold: 0.02 });
+  visibilidad.observe(contenedor);
 
   function paso(t) {
     ctx.clearRect(0, 0, W, H);
@@ -840,11 +906,10 @@ function iniciarParticulas() {
     }
 
     ctx.globalAlpha = 1;
-    requestAnimationFrame(paso);
+    if (corriendo) rafId = requestAnimationFrame(paso);
   }
 
-  dimensionar();
-  requestAnimationFrame(paso);
+  reanudar();
 }
 
 /* ============================================================
@@ -854,19 +919,27 @@ const TRAIL_COLORS = ["#D4A017", "#C8862B", "#4A7BB5", "#C9A8DC", "#B5651D"];
 
 function iniciarEstelaCursor() {
   const canvas = document.getElementById("cursor-trail");
+  if (!canvas || !canvas.getContext) return;
+
+  // No hay cursor físico en táctico, y reduced-motion => sin estela.
+  if (reducirMovimiento() || dispoToque()) return;
+
   const ctx = canvas.getContext("2d");
   let particulas = [];
   let ultimoDisparo = 0;
+  let rafId = 0;
+  let corriendo = false;
 
   function redimensionar() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
   redimensionar();
-  window.addEventListener("resize", redimensionar);
+  window.addEventListener("resize", redimensionar, { passive: true });
+  window.addEventListener("orientationchange", redimensionar, { passive: true });
 
   const PALETA = TRAIL_COLORS;
-  const MAX = 120;
+  const MAX = 100;
 
   function sembrar(e) {
     const ahora = performance.now();
@@ -887,6 +960,12 @@ function iniciarEstelaCursor() {
     }
     if (particulas.length > MAX) {
       particulas = particulas.slice(particulas.length - MAX);
+    }
+
+    // Arranca el dibujo solo cuando hay partículas activas.
+    if (!corriendo) {
+      corriendo = true;
+      rafId = requestAnimationFrame(dibujar);
     }
   }
 
@@ -914,9 +993,14 @@ function iniciarEstelaCursor() {
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    requestAnimationFrame(dibujar);
+
+    // Se detiene solo cuando no queda nada que pintar (ahorra CPU).
+    if (particulas.length > 0 && corriendo) {
+      rafId = requestAnimationFrame(dibujar);
+    } else {
+      corriendo = false;
+    }
   }
-  requestAnimationFrame(dibujar);
 }
 
 /* ============================================================
@@ -937,7 +1021,7 @@ function iniciarScrollEstados() {
 
       const altoDoc = document.documentElement.scrollHeight - window.innerHeight;
       const pct = altoDoc > 0 ? Math.min((y / altoDoc) * 100, 100) : 0;
-      progress.style.width = pct + "%";
+      progress.style.transform = "scaleX(" + (pct / 100) + ")";
 
       if (y > 560) {
         toTop.hidden = false;
@@ -984,22 +1068,43 @@ function iniciarTilt() {
   const grid = document.getElementById("report-grid");
   if (!grid) return;
 
+  // Sin tilt en táctiles: evita el hover "pegado" tras el tap.
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+  let cardActual = null;
+  let rectCache = null;
+
   grid.addEventListener("pointermove", e => {
     const card = e.target.closest(".bento-item--reporte");
-    if (!card) return;
-    const rect = card.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width - 0.5;
-    const py = (e.clientY - rect.top) / rect.height - 0.5;
-    card.style.setProperty("--ry", (px * 6).toFixed(2) + "deg");
-    card.style.setProperty("--rx", (-py * 6).toFixed(2) + "deg");
-  });
-
-  grid.addEventListener("pointerleave", e => {
-    if (e.target.classList && e.target.classList.contains("bento-item--reporte")) {
-      e.target.style.setProperty("--rx", "0deg");
-      e.target.style.setProperty("--ry", "0deg");
+    if (!card) {
+      if (cardActual) {
+        cardActual.style.setProperty("--rx", "0deg");
+        cardActual.style.setProperty("--ry", "0deg");
+        cardActual = null;
+        rectCache = null;
+      }
+      return;
     }
-  });
+    // Se mide la tarjeta una sola vez al entrar (evita reflow por movimiento).
+    if (card !== cardActual) {
+      cardActual = card;
+      rectCache = card.getBoundingClientRect();
+    }
+    if (!rectCache || rectCache.width === 0) return;
+    const px = (e.clientX - rectCache.left) / rectCache.width - 0.5;
+    const py = (e.clientY - rectCache.top) / rectCache.height - 0.5;
+    card.style.setProperty("--ry", (px * 5).toFixed(2) + "deg");
+    card.style.setProperty("--rx", (-py * 5).toFixed(2) + "deg");
+  }, { passive: true });
+
+  grid.addEventListener("pointerleave", () => {
+    if (cardActual) {
+      cardActual.style.setProperty("--rx", "0deg");
+      cardActual.style.setProperty("--ry", "0deg");
+    }
+    cardActual = null;
+    rectCache = null;
+  }, { passive: true });
 }
 
 /* ============================================================
@@ -1607,10 +1712,33 @@ function iniciarConstelacion() {
     window.addEventListener("pointermove", dibujarEstatico, { passive: true });
     dibujarEstatico();
   } else {
-    (function bucle(ahora) {
-      animate(ahora);
-      requestAnimationFrame(bucle);
-    })(performance.now());
+    let rafId = 0;
+    let corriendo = false;
+
+    const pauseConstelacion = () => {
+      if (!corriendo) return;
+      corriendo = false;
+      cancelAnimationFrame(rafId);
+    };
+    const resumeConstelacion = () => {
+      if (corriendo) return;
+      corriendo = true;
+      (function bucle(ahora) {
+        if (!corriendo) return;
+        animate(ahora);
+        rafId = requestAnimationFrame(bucle);
+      })(performance.now());
+    };
+
+    // La sección queda bajo el fold casi todo el tiempo: no animar sin verse.
+    const obsBarrio = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) resumeConstelacion();
+        else pauseConstelacion();
+      });
+    }, { threshold: 0.02 });
+    obsBarrio.observe(canvas.parentElement);
+    resumeConstelacion();
   }
 }
 
@@ -1646,21 +1774,6 @@ async function init() {
     .forEach(chip => chip.addEventListener("click", manejarClicChipEstado));
   document.querySelectorAll(".noticias-tabs .chip")
     .forEach(chip => chip.addEventListener("click", manejarClicChipNoticia));
-
-  // Modal de confirmación para eliminar reportes
-  const modalCancel = document.getElementById("modal-cancel");
-  const modalConfirm = document.getElementById("modal-confirm");
-  const modalOverlay = document.getElementById("modal-overlay");
-  if (modalCancel) modalCancel.addEventListener("click", cerrarModal);
-  if (modalConfirm) modalConfirm.addEventListener("click", confirmarEliminar);
-  if (modalOverlay) {
-    modalOverlay.addEventListener("click", e => {
-      if (e.target.id === "modal-overlay") cerrarModal();
-    });
-  }
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape") cerrarModal();
-  });
 
   iniciarParticulas();
   iniciarEstelaCursor();

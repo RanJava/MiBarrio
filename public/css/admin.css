@@ -41,6 +41,7 @@
 /* ---------- Login ---------- */
 .login-view {
   min-height: calc(100vh - 72px);
+  min-height: calc(100svh - 72px);
   display: grid;
   place-items: center;
   padding: 2rem clamp(1.25rem, 5vw, 4rem);
@@ -213,6 +214,25 @@
   color: var(--text-soft);
   padding: 2.5rem 0;
   font-weight: 600;
+}
+
+/* ---------- Rendimiento móvil (backdrop-filter caro en GPU) ---------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .admin-topbar, .login-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .admin-topbar { background: var(--bg); }
+  .login-card { background: var(--bg-card); }
+}
+
+@media (max-width: 768px) {
+  .admin-topbar, .login-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .admin-topbar { background: var(--bg); }
+  .login-card { background: var(--bg-card); }
 }
 
 @media (max-width: 720px) {

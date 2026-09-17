@@ -138,7 +138,9 @@ code {
   position: fixed;
   top: 0; left: 0;
   height: 4px;
-  width: 0;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
   background: linear-gradient(90deg, var(--oro-claro), var(--rojo-punzo), var(--azul-castillo));
   z-index: 80;
   border-bottom-right-radius: 4px;
@@ -147,8 +149,8 @@ code {
 .cursor-trail {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   z-index: 9000;
   pointer-events: none;
   opacity: 0.5;
@@ -296,23 +298,14 @@ code {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-}
-
-.pin-scene { position: relative; height: 240vh; }
-.pin-inner {
-  position: sticky;
-  top: 0;
-  height: 100vh;
+  height: 100svh; /* viewport pequeño: estable con la barra de direcciones en móvil */
   overflow: hidden;
   display: flex;
   align-items: center;
 }
 
 /* Valor por defecto: contenido visible aunque el JS tarde (o falte). */
-[data-scene] { --sp: 0.5; will-change: transform; }
+[data-scene] { --sp: 0.5; }
 [data-slide] { transform: translateZ(0); }
 
 /* Los [data-slide] se encienden según el paso del scene:
@@ -504,7 +497,6 @@ code {
   overflow: hidden;
   isolation: isolate;
   transition: transform 0.3s var(--ease-out), box-shadow 0.3s ease, border-color 0.3s ease;
-  will-change: transform;
 }
 .bento-item:hover { transform: translateY(-6px) rotate(-0.5deg); box-shadow: var(--shadow-2); border-color: color-mix(in srgb, var(--oro-claro) 55%, var(--border)); }
 
@@ -905,6 +897,9 @@ textarea { resize: vertical; }
 .bento-item--reporte {
   border-top: 5px solid var(--cat-color, var(--primary));
 }
+.bento-item--reporte:hover {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-6px) rotate(-0.5deg);
+}
 .bento-item--reporte h3 { font-size: 1.1rem; margin-bottom: 0.4rem; }
 .report-meta {
   display: flex;
@@ -1218,7 +1213,72 @@ textarea { resize: vertical; }
     transition-duration: 0.01ms !important;
   }
   .hero-halo { opacity: 0.6; }
-  .hero-scrollcue i { animation-iteration-count: 1; }
+  .hero-scrollcue i { animation: none; }
+  .marquee-track { animation: none; } /* evita el scroll infinito */
+}
+
+/* ============================================================
+   Fallback sin backdrop-filter (navegadores sin soporte)
+   ============================================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header, .form-card, .modal-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .site-header { background: var(--bg); }
+  .form-card { background: var(--bg-card); }
+  .modal-overlay { background: rgba(20, 15, 10, 0.78); }
+}
+
+/* ============================================================
+   Móvil: backdrop-filter y blur son caros en GPU. Se aplanan
+   a fondo semitransparente simple y se reduce el halo del hero.
+   ============================================================ */
+@media (max-width: 768px) {
+  .site-header,
+  .form-card,
+  .modal-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .site-header { background: var(--bg); }
+  .form-card { background: var(--bg-card); }
+  .modal-overlay { background: rgba(20, 15, 10, 0.78); }
+
+  .hero-halo { filter: blur(22px); }
+}
+
+/* ============================================================
+   Touch: el :hover se queda "pegado" tras un tap. Se neutralizan
+   las elevaciones/rotaciones para que no se deformen los layouts.
+   ============================================================ */
+@media (hover: none), (pointer: coarse) {
+  .bento-item:hover,
+  .stat-card:hover,
+  .milestone:hover,
+  .nav-link:hover,
+  .brand:hover .brand-logo,
+  .theme-toggle:hover,
+  .admin-link:hover,
+  .chip:hover,
+  .btn:hover,
+  .btn-primary:hover,
+  .btn-ghost:hover,
+  .btn-danger:hover,
+  .btn-small:hover,
+  .captcha-refresh:hover,
+  .footer-links a:hover,
+  .to-top:hover,
+  .bento-item--reporte:hover,
+  .bento-item--reporte:hover .report-priority-badge,
+  .bento-item--reporte:hover .report-status,
+  .admin-stat:hover,
+  .admin-item:hover,
+  .admin-tab:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  .btn-primary:hover::after { left: -130%; } /* sin barrido de brillo */
 }
 
 /* ============================================================
