@@ -10,8 +10,8 @@ const path = require("node:path");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
-const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, "mibarrio.db");
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, "..", "data", "mibarrio.db");
+const DATA_DIR = path.dirname(DB_PATH);
 
 const CATEGORIAS_VALIDAS = [
   "via-publica",
