@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Barrio Mejor — Las Panosas, Tarija</title>
+<meta name="description" content="Plataforma de reportes comunitarios del barrio Las Panosas, casco viejo de Tarija — noticias, historia y reportes vecinales.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- Símbolos SVG reutilizables (logo de la Casa Dorada) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="g-oro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F2D88B"/>
+      <stop offset="0.5" stop-color="#D9A441"/>
+      <stop offset="1" stop-color="#B5651D"/>
+    </linearGradient>
+    <linearGradient id="g-oro-soft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E9C169"/>
+      <stop offset="1" stop-color="#C8862B"/>
+    </linearGradient>
+    <linearGradient id="g-azul" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9CC3E6"/>
+      <stop offset="1" stop-color="#4A7BB5"/>
+    </linearGradient>
+    <symbol id="logo-casa" viewBox="0 0 64 64">
+      <rect x="10" y="52" width="44" height="6" rx="2" fill="#8A5A1C"/>
+      <rect x="12" y="26" width="40" height="26" rx="1.5" fill="url(#g-oro-soft)"/>
+      <rect x="15" y="26" width="3.5" height="26" fill="#7A5B1E"/>
+      <rect x="45.5" y="26" width="3.5" height="26" fill="#7A5B1E"/>
+      <path d="M26 52 V39 a6 6 0 0 1 12 0 V52 Z" fill="url(#g-azul)"/>
+      <rect x="24" y="46" width="16" height="6" fill="#8A5A1C"/>
+      <rect x="13" y="23.5" width="38" height="2.5" rx="1" fill="#7A5B1E"/>
+      <path d="M13 23.5 L32 7 L51 23.5 Z" fill="url(#g-oro)"/>
+      <circle cx="32" cy="19" r="3" fill="url(#g-azul)"/>
+    </symbol>
+    <symbol id="logo-casa-linea" viewBox="0 0 64 64">
+      <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
+        <path d="M13 23.5 L32 7 L51 23.5 Z"/>
+        <rect x="13" y="23.5" width="38" height="2.5" fill="currentColor" stroke="none" opacity="0.85"/>
+        <rect x="12" y="26" width="40" height="26" rx="1.5"/>
+        <path d="M26 52 V39 a6 6 0 0 1 12 0 V52 Z"/>
+        <line x1="16" y1="30" x2="16" y2="48"/>
+        <line x1="48" y1="30" x2="48" y2="48"/>
+        <rect x="10" y="52" width="44" height="6" rx="2"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- Barra de progreso de scroll -->
+<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+
+<!-- Estela de partículas que sigue al cursor -->
+<canvas id="cursor-trail" class="cursor-trail" aria-hidden="true"></canvas>
+
+<a class="skip-link" href="#reportar">Saltar al formulario de reporte</a>
+
+<header class="site-header" id="site-header">
+  <a class="brand" href="#inicio" aria-label="Mi Barrio Mejor — volver al inicio">
+    <svg class="brand-logo" aria-hidden="true"><use href="#logo-casa"/></svg>
+    <span class="brand-text"><span class="brand-name">Mi Barrio</span> <span class="brand-name brand-name--bold">Mejor</span><small class="brand-tag">Las Panosas · Tarija</small></span>
+  </a>
+  <nav class="site-nav" aria-label="Navegación principal">
+    <a href="#noticias" class="nav-link" data-spy="noticias">Noticias</a>
+    <a href="#reportar" class="nav-link" data-spy="reportar">Reportar</a>
+    <a href="#reportes" class="nav-link" data-spy="reportes">Reportes</a>
+    <a href="#barrio" class="nav-link" data-spy="barrio">El barrio</a>
+  </nav>
+  <div class="header-actions">
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar entre tema claro y oscuro" title="Cambiar tema">
+      <span class="theme-icon" id="theme-icon" aria-hidden="true">🌙</span>
+    </button>
+    <a class="admin-link" href="admin.html" title="Panel de administración" aria-label="Panel de administración">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Zm0-2A1.5 1.5 0 1 1 12 10a1.5 1.5 0 0 1 0 3.5Z"/><path d="M19.4 13a7.6 7.6 0 0 0 .1-1 7.6 7.6 0 0 0-.1-1l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.7 7.7 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.7 7.7 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.5 11A7.6 7.6 0 0 0 4.4 12c0 .3 0 .7.1 1l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .2.3.4.5.4h4c.2 0 .4-.2.5-.4l.4-2.6a7.7 7.7 0 0 0 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13Z"/></svg>
+    </a>
+  </div>
+</header>
+
+<main id="contenido">
+
+  <!-- 1. HERO — postal fija con scrollytelling -->
+  <section class="pin-scene pin-scene--hero" id="inicio" data-scene>
+    <div class="pin-inner hero" id="hero-postal">
+      <div id="tsparticles" class="hero-particles" aria-hidden="true"></div>
+      <div class="hero-halo hero-halo--oro" aria-hidden="true"></div>
+      <div class="hero-halo hero-halo--azul" aria-hidden="true"></div>
+
+      <div class="hero-shape hero-shape--casa" data-chain="casa" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><use href="#logo-casa-linea"/></svg>
+      </div>
+      <div class="hero-shape hero-shape--arch hero-shape--archA" data-chain="arco" aria-hidden="true"></div>
+      <div class="hero-shape hero-shape--arch hero-shape--archB" data-chain="arco" aria-hidden="true"></div>
+      <div class="hero-shape hero-shape--bar hero-shape--barA" data-chain="bar" aria-hidden="true"></div>
+      <div class="hero-shape hero-shape--bar hero-shape--barB" data-chain="bar" aria-hidden="true"></div>
+
+      <div class="hero-content">
+        <p class="hero-eyebrow" data-slide="eyebrow">Distrito 3 · Casco viejo de Tarija</p>
+        <h1 class="hero-title" data-slide="title">Las Panosas se cuida<br><span>entre vecinos.</span></h1>
+        <p class="hero-sub" data-slide="sub">Entre la Casa Dorada y el Castillo Azul, a pasos de la Plaza Luis de Fuentes, este barrio lleva casi un siglo de historia — desde las chicheras Panoso hasta hoy.</p>
+        <div class="hero-actions" data-slide="cta">
+          <a href="#reportar" class="btn btn-primary">Reportar un problema</a>
+          <a href="#noticias" class="btn btn-ghost">Ver qué pasa en el barrio</a>
+        </div>
+      </div>
+
+      <div class="hero-scrollcue" data-slide="cue" aria-hidden="true">
+        <span>Desliza para recorrer el barrio</span>
+        <i></i>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cinta de palabras -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>Casa Dorada</span><i>✦</i>
+      <span>Castillo Azul</span><i>✦</i>
+      <span>Chicha de las Panoso</span><i>✦</i>
+      <span>San Plácido 1938</span><i>✦</i>
+      <span>Vendimia Chapaca</span><i>✦</i>
+      <span>Plaza Luis de Fuentes</span><i>✦</i>
+      <span>Casa Dorada</span><i>✦</i>
+      <span>Castillo Azul</span><i>✦</i>
+      <span>Chicha de las Panoso</span><i>✦</i>
+      <span>San Plácido 1938</span><i>✦</i>
+      <span>Vendimia Chapaca</span><i>✦</i>
+      <span>Plaza Luis de Fuentes</span><i>✦</i>
+    </div>
+  </div>
+
+  <!-- 2. NOTICIAS — bento grid -->
+  <section class="section noticias" id="noticias" data-scene>
+    <div class="section-head" data-slide="reveal">
+      <p class="section-eyebrow">¿Qué se cuenta en el barrio?</p>
+      <h2>Noticias, voces y<br><em>nuevos comienzos</em></h2>
+      <p class="section-desc">Anuncios de la junta vecinal, apertura de emprendimientos y pedacitos de historia que hacen a Las Panosas.</p>
+    </div>
+
+    <div class="filter-chips noticias-tabs" role="group" aria-label="Filtrar noticias">
+      <button class="chip is-active" data-noticia-tipo="todas" type="button">Todas</button>
+      <button class="chip" data-noticia-tipo="noticia" type="button">Noticias</button>
+      <button class="chip" data-noticia-tipo="negocio" type="button">Negocios</button>
+      <button class="chip" data-noticia-tipo="historia" type="button">Historia</button>
+    </div>
+
+    <div class="bento bento-noticias" id="noticias-bento" aria-live="polite"></div>
+    <p class="empty-state" id="noticias-empty" hidden>No hay novedades para este filtro todavía.</p>
+  </section>
+
+  <!-- 3. ESTADÍSTICAS — postales de números -->
+  <section class="stats-scene" data-scene aria-label="Resumen de reportes">
+    <div class="stats-bento">
+      <div class="stat-card stat-card--featured" data-slide="stat">
+        <span class="stat-number" data-counter id="stat-total">0</span>
+        <span class="stat-label">reportes en total</span>
+      </div>
+      <div class="stat-card" data-slide="stat">
+        <span class="stat-number" data-counter id="stat-pendientes">0</span>
+        <span class="stat-label">pendientes</span>
+      </div>
+      <div class="stat-card" data-slide="stat">
+        <span class="stat-number" data-counter id="stat-proceso">0</span>
+        <span class="stat-label">en proceso</span>
+      </div>
+      <div class="stat-card stat-card--verde" data-slide="stat">
+        <span class="stat-number" data-counter id="stat-resueltos">0</span>
+        <span class="stat-label">resueltos</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. REPORTAR — postal del formulario -->
+  <section class="pin-scene pin-scene--form" id="reportar" data-scene>
+    <div class="pin-inner">
+      <div class="reportar-wrap">
+        <div class="reportar-intro" data-slide="reveal">
+          <p class="section-eyebrow">Reportar</p>
+          <h2>Cuéntanos<br><em>qué encontraste</em></h2>
+          <p class="section-desc">Un bache en la calle Colón, un farol apagado en Bolívar, basura acumulada en el mercado. Cada reporte queda visible para todo el barrio y su estado se puede seguir.</p>
+          <div class="reportar-tip">
+            <span class="reportar-tip-ico" aria-hidden="true"></span>
+            <p>Tu reporte llega directo a la junta vecinal y al panel de administración, donde se revisa junto a los reclamos y sugerencias del barrio.</p>
+          </div>
+        </div>
+
+        <div class="form-card" data-slide="form">
+          <form id="formulario" class="report-form" novalidate>
+            <div class="field">
+              <label for="titulo">Título del reporte</label>
+              <input type="text" id="titulo" name="titulo" placeholder="Ej: Bache grande en calle Junín" required maxlength="80">
+              <span class="field-error" data-error-for="titulo"></span>
+            </div>
+
+            <div class="field">
+              <label for="categoria">Tipo de problema</label>
+              <select id="categoria" name="categoria" required>
+                <option value="" disabled selected>Elige una categoría</option>
+                <option value="via-publica">Vía pública / veredas</option>
+                <option value="iluminacion">Iluminación</option>
+                <option value="basura">Basura y limpieza</option>
+                <option value="areas-verdes">Áreas verdes</option>
+                <option value="seguridad">Seguridad</option>
+                <option value="patrimonio">Patrimonio / fachadas</option>
+                <option value="otro">Otro</option>
+              </select>
+              <span class="field-error" data-error-for="categoria"></span>
+            </div>
+
+            <div class="field">
+              <label for="prioridad">Prioridad</label>
+              <select id="prioridad" name="prioridad" required>
+                <option value="" disabled selected>Elige una prioridad</option>
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+              </select>
+              <span class="field-error" data-error-for="prioridad"></span>
+            </div>
+
+            <div class="field">
+              <label for="calle">Ubicación / Zona</label>
+              <input type="text" id="calle" name="calle" placeholder="Ej: Calle Bolívar entre Junín y O'Connor" required maxlength="100">
+              <span class="field-error" data-error-for="calle"></span>
+            </div>
+
+            <div class="field field-full">
+              <label for="descripcion">Descripción</label>
+              <textarea id="descripcion" name="descripcion" rows="4" placeholder="Describe brevemente el problema" required maxlength="400"></textarea>
+              <span class="char-counter" id="char-counter">0 / 400 caracteres</span>
+              <span class="field-error" data-error-for="descripcion"></span>
+            </div>
+
+            <div class="field">
+              <label for="reportante">Tu nombre (opcional)</label>
+              <input type="text" id="reportante" name="reportante" placeholder="Vecino anónimo" maxlength="60">
+            </div>
+
+            <div class="field">
+              <label id="captcha-label">Verificación — ¿eres humano?</label>
+              <div class="captcha-row">
+                <span class="captcha-question" id="captcha-question" aria-labelledby="captcha-label">—</span>
+                <input type="text" id="captcha-respuesta" name="captcha-respuesta" inputmode="numeric" autocomplete="off" placeholder="Resultado" required maxlength="4">
+                <button type="button" class="captcha-refresh" id="captcha-refresh" aria-label="Generar otra pregunta" title="Otra pregunta">↻</button>
+              </div>
+              <span class="field-error" data-error-for="captcha"></span>
+            </div>
+
+            <div class="field field-actions">
+              <button type="submit" class="btn btn-primary" id="btn-submit">
+                <span class="btn-label">Enviar reporte</span>
+              </button>
+              <span class="form-status" id="form-status" role="status" aria-live="polite"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. REPORTES — bento grid de reportes -->
+  <section class="section reportes" id="reportes" data-scene>
+    <div class="section-head" data-slide="reveal">
+      <p class="section-eyebrow">Reportes</p>
+      <h2>Lo que está pasando<br><em>en el barrio</em></h2>
+    </div>
+
+    <div class="filters" data-slide="reveal">
+      <input type="search" id="buscar" placeholder="Buscar por calle, título o descripción…" aria-label="Buscar reportes">
+
+      <div class="filter-group">
+        <span class="filter-group-label">Estado</span>
+        <div class="filter-chips filter-chips-estado" role="group" aria-label="Filtrar por estado">
+          <button class="chip is-active" data-filter-estado="todas" type="button">Todos</button>
+          <button class="chip" data-filter-estado="pendiente" type="button">Pendientes</button>
+          <button class="chip" data-filter-estado="proceso" type="button">En proceso</button>
+          <button class="chip" data-filter-estado="resuelto" type="button">Resueltos</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-group-label">Categoría</span>
+        <div class="filter-chips" role="group" aria-label="Filtrar por categoría">
+          <button class="chip is-active" data-filter="todas" type="button">Todas</button>
+          <button class="chip" data-filter="via-publica" type="button">Vía pública</button>
+          <button class="chip" data-filter="iluminacion" type="button">Iluminación</button>
+          <button class="chip" data-filter="basura" type="button">Basura</button>
+          <button class="chip" data-filter="areas-verdes" type="button">Áreas verdes</button>
+          <button class="chip" data-filter="seguridad" type="button">Seguridad</button>
+          <button class="chip" data-filter="patrimonio" type="button">Patrimonio</button>
+          <button class="chip" data-filter="otro" type="button">Otro</button>
+        </div>
+      </div>
+
+      <select id="orden" aria-label="Ordenar reportes">
+        <option value="recientes">Más recientes</option>
+        <option value="antiguos">Más antiguos</option>
+        <option value="estado">Por estado</option>
+        <option value="prioridad">Por prioridad</option>
+      </select>
+    </div>
+
+    <div class="bento bento-reportes" id="report-grid" aria-live="polite"></div>
+    <p class="empty-state" id="empty-state" hidden>No hay reportes que coincidan con tu búsqueda todavía.</p>
+  </section>
+
+  <!-- 6. EL BARRIO — postal de historia -->
+  <section class="pin-scene pin-scene--barrio" id="barrio" data-scene>
+    <div class="pin-inner barrio">
+      <div class="barrio-media" data-slide="media" aria-hidden="true">
+        <canvas id="constelacion" class="barrio-constelacion"></canvas>
+      </div>
+      <div class="barrio-copy">
+        <div class="section-head" data-slide="reveal">
+          <p class="section-eyebrow">El barrio</p>
+          <h2>Uno de los cuatro barrios <em>fundacionales</em></h2>
+        </div>
+        <p data-slide="reveal">Las Panosas, San Roque, El Molino y La Pampa nacieron sobre el damero fundacional de Tarija, rodeando la esquina noreste de la Plaza Luis de Fuentes — ahí donde hoy se cruzan la Gobernación, la Alcaldía y el Comité Cívico. El nombre viene de dos chicheras de apellido Panoso, que vendían chicha al final de la calle Colón cuando la ciudad apenas tenía cuatro barrios. Su patrono es San Plácido, celebrado desde 1938.</p>
+        <p data-slide="reveal">Por sus calles — Colón, Bolívar, Ingavi, General Trigo, Junín, O'Connor — pasan dos de los edificios más reconocibles del casco viejo: la Casa Dorada, con su fachada dorada, y el Castillo Azul, obra de los hermanos Camponovo para el mismo comerciante, Moisés Navajas, y ubicado dentro del propio barrio.</p>
+        <p data-slide="reveal">Tarija concentra cerca del 85% de la capacidad productiva de uva del país. Esa herencia — vid, vino, singani, la Vendimia Chapaca — se cuela en cada patio con parral del barrio, y en los colores que usamos en esta página.</p>
+
+        <div class="milestones">
+          <div class="milestone" data-slide="reveal"><b>1938</b><span>San Plácido se vuelve patrono del barrio</span></div>
+          <div class="milestone" data-slide="reveal"><b>1900s</b><span>Las Panoso venden chicha en la calle Colón</span></div>
+          <div class="milestone" data-slide="reveal"><b>Hoy</b><span>Vecindario digital: reportar, contar y cuidar</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 7. FOOTER — las formas de la Casa Dorada -->
+<footer class="site-footer">
+  <div class="footer-canvas" aria-hidden="true">
+    <span class="footer-arch footer-arch--a"></span>
+    <span class="footer-arch footer-arch--b"></span>
+    <span class="footer-arch footer-arch--c"></span>
+    <div class="footer-casa">
+      <svg viewBox="0 0 64 64"><use href="#logo-casa"/></svg>
+      <svg class="footer-casa-linea" viewBox="0 0 64 64"><use href="#logo-casa-linea"/></svg>
+    </div>
+    <span class="footer-bar footer-bar--a"></span>
+    <span class="footer-bar footer-bar--b"></span>
+  </div>
+
+  <div class="footer-inner">
+    <p class="footer-claim">Mi Barrio Mejor — un proyecto para el barrio Las Panosas, Tarija.</p>
+    <p class="footer-note">Los reportes se guardan en una base de datos SQLite local ejecutada con <code>npm start</code>. La Casa Dorada es nuestra marca: un edificio de geometría dorada que hace 100 años se volvió símbolo del casco viejo.</p>
+    <nav class="footer-links" aria-label="Enlaces del pie">
+      <a href="#inicio">Inicio</a>
+      <a href="#noticias">Noticias</a>
+      <a href="#reportar">Reportar</a>
+      <a href="#reportes">Reportes</a>
+      <a href="#barrio">El barrio</a>
+      <a href="admin.html">Panel de administración</a>
+    </nav>
+    <p class="footer-copy">© 2026 · Junta Vecinal Las Panosas · Concurso Mi Barrio Mejor</p>
+  </div>
+</footer>
+
+<!-- Botón volver arriba -->
+<button class="to-top" id="to-top" type="button" aria-label="Volver arriba" title="Volver arriba" hidden>↑</button>
+
+<!-- Notificaciones (toasts) -->
+<div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+<script src="js/script.js"></script>
+</body>
+</html>

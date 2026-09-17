@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Administración — Mi Barrio Mejor</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-topbar">
+  <a class="brand" href="index.html">
+    <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo-casa"/></svg>
+    <span class="brand-text"><span class="brand-name">Panel</span> <span class="brand-name brand-name--bold">Vecinal</span></span>
+  </a>
+  <div class="admin-topbar-actions">
+    <span class="admin-user" id="admin-user"></span>
+    <button class="btn-small btn-logout" id="btn-logout" type="button" hidden>Salir</button>
+    <a class="btn-small btn-back" href="index.html">← Ver el sitio</a>
+  </div>
+</header>
+
+<!-- Símbolos (mismo logo) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="g-oro2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F2D88B"/><stop offset="0.5" stop-color="#D9A441"/><stop offset="1" stop-color="#B5651D"/>
+    </linearGradient>
+    <linearGradient id="g-oro-soft2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E9C169"/><stop offset="1" stop-color="#C8862B"/>
+    </linearGradient>
+    <linearGradient id="g-azul2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9CC3E6"/><stop offset="1" stop-color="#4A7BB5"/>
+    </linearGradient>
+    <symbol id="logo-casa" viewBox="0 0 64 64">
+      <rect x="10" y="52" width="44" height="6" rx="2" fill="#8A5A1C"/>
+      <rect x="12" y="26" width="40" height="26" rx="1.5" fill="url(#g-oro-soft2)"/>
+      <rect x="15" y="26" width="3.5" height="26" fill="#7A5B1E"/>
+      <rect x="45.5" y="26" width="3.5" height="26" fill="#7A5B1E"/>
+      <path d="M26 52 V39 a6 6 0 0 1 12 0 V52 Z" fill="url(#g-azul2)"/>
+      <rect x="24" y="46" width="16" height="6" fill="#8A5A1C"/>
+      <rect x="13" y="23.5" width="38" height="2.5" rx="1" fill="#7A5B1E"/>
+      <path d="M13 23.5 L32 7 L51 23.5 Z" fill="url(#g-oro2)"/>
+      <circle cx="32" cy="19" r="3" fill="url(#g-azul2)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<main class="admin-main">
+
+  <!-- Vista de login -->
+  <section class="login-view" id="login-view">
+    <div class="login-card">
+      <svg class="login-logo" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo-casa"/></svg>
+      <h2>Bienvenido, vecino</h2>
+      <p class="login-sub">Ingresa para escribir anuncios y noticias, y revisar los reclamos y sugerencias del barrio.</p>
+      <form id="login-form" class="login-form" novalidate>
+        <div class="field">
+          <label for="login-usuario">Usuario</label>
+          <input type="text" id="login-usuario" name="usuario" autocomplete="username" required autofocus>
+        </div>
+        <div class="field">
+          <label for="login-clave">Clave</label>
+          <input type="password" id="login-clave" name="clave" autocomplete="current-password" required>
+        </div>
+        <span class="form-status" id="login-status" role="status" aria-live="polite"></span>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-login">
+          <span class="btn-label">Entrar al panel</span>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Vista del panel -->
+  <section class="panel-view" id="panel-view" hidden>
+
+    <nav class="admin-tabs" aria-label="Secciones del panel">
+      <button class="admin-tab is-active" data-tab="resumen" type="button">Resumen</button>
+      <button class="admin-tab" data-tab="noticias" type="button">Noticias &amp; anuncios</button>
+      <button class="admin-tab" data-tab="reportes" type="button">Reclamos &amp; reportes</button>
+    </nav>
+
+    <!-- Resumen -->
+    <section class="admin-panel" id="panel-resumen">
+      <h2 class="admin-panel-title">Estado del barrio</h2>
+      <div class="admin-stats" id="admin-stats">
+        <div class="admin-stat"><span class="admin-stat-num" data-stat="total">0</span><span class="admin-stat-label">Reportes totales</span></div>
+        <div class="admin-stat admin-stat--pendiente"><span class="admin-stat-num" data-stat="pendientes">0</span><span class="admin-stat-label">Pendientes</span></div>
+        <div class="admin-stat admin-stat--proceso"><span class="admin-stat-num" data-stat="proceso">0</span><span class="admin-stat-label">En proceso</span></div>
+        <div class="admin-stat admin-stat--resuelto"><span class="admin-stat-num" data-stat="resueltos">0</span><span class="admin-stat-label">Resueltos</span></div>
+        <div class="admin-stat admin-stat--noticias"><span class="admin-stat-num" data-stat="noticias">0</span><span class="admin-stat-label">Noticias publicadas</span></div>
+      </div>
+    </section>
+
+    <!-- Noticias -->
+    <section class="admin-panel" id="panel-noticias" hidden>
+      <div class="admin-panel-head">
+        <h2 class="admin-panel-title">Noticias, negocios e historias</h2>
+        <button class="btn btn-primary" id="btn-nueva" type="button">+ Nueva publicación</button>
+      </div>
+
+      <form id="noticia-form" class="noticia-form" hidden novalidate>
+        <div class="field">
+          <label for="n-titulo">Título</label>
+          <input type="text" id="n-titulo" maxlength="120" placeholder="Ej: Nueva chichería abre en la calle Colón">
+        </div>
+        <div class="field">
+          <label for="n-tipo">Tipo</label>
+          <select id="n-tipo">
+            <option value="noticia">Noticia</option>
+            <option value="negocio">Negocio / emprendimiento</option>
+            <option value="historia">Historia del barrio</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="n-resumen">Resumen corto</label>
+          <input type="text" id="n-resumen" maxlength="200" placeholder="Fruta de una o dos líneas para las tarjetas">
+        </div>
+        <div class="field field-full">
+          <label for="n-contenido">Contenido</label>
+          <textarea id="n-contenido" rows="5" maxlength="1600" placeholder="Redacta la noticia completa…"></textarea>
+        </div>
+        <div class="field">
+          <label for="n-autor">Autor / fuente</label>
+          <input type="text" id="n-autor" maxlength="60" placeholder="Ej: Junta Vecinal Las Panosas">
+        </div>
+        <span class="form-status" id="noticia-status" role="status" aria-live="polite"></span>
+        <div class="field-actions">
+          <button type="submit" class="btn btn-primary" id="btn-guardar">Guardar</button>
+          <button type="button" class="btn btn-ghost" id="btn-cancelar-n">Cancelar</button>
+        </div>
+      </form>
+
+      <div class="admin-list" id="noticias-list" aria-live="polite"></div>
+    </section>
+
+    <!-- Reportes -->
+    <section class="admin-panel" id="panel-reportes" hidden>
+      <div class="admin-panel-head">
+        <h2 class="admin-panel-title">Reclamos, sugerencias y reportes</h2>
+        <div class="admin-filters">
+          <select id="admin-filtro-estado" aria-label="Filtrar por estado">
+            <option value="todas">Todos los estados</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="proceso">En proceso</option>
+            <option value="resuelto">Resueltos</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="admin-list admin-list--reportes" id="reportes-list" aria-live="polite"></div>
+    </section>
+
+  </section>
+</main>
+
+<div class="modal-overlay" id="modal-overlay" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
+    <h3 id="modal-title">¿Confirmar acción?</h3>
+    <p id="modal-desc"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="modal-confirm">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+<script src="js/admin.js"></script>
+</body>
+</html>
