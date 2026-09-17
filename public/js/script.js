@@ -752,6 +752,7 @@ function iniciarParticulas() {
   const COLORS = ["#F2D88B", "#D4A017", "#C8862B", "#7FB2D9", "#A88BC4", "#C9A8DC"];
   let W = 0, H = 0, dpr = 1;
   let particulas = [];
+  const cacheSpriteParticula = new Map();
   let cursor = { x: -9e9, y: -9e9 };
   let ultimoResize = 0;
   let rafId = 0;
@@ -768,6 +769,7 @@ function iniciarParticulas() {
     canvas.style.width = W + "px";
     canvas.style.height = H + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cacheSpriteParticula.clear();
     crearParticulas();
   }
 
@@ -783,6 +785,23 @@ function iniciarParticulas() {
       fase: Math.random() * Math.PI * 2,
       pulso: 0.014 + Math.random() * 0.02
     }));
+  }
+
+  /* Pre-renderiza el punto como sprite pequeño para no repetir
+     beginPath/arc por frame. Se llama solo la primera vez que se
+     necesita cada (color, radio). */
+  function spriteParticula(color, r) {
+    const css = Math.ceil((r * 2 + 1) * dpr) / dpr;
+    const cv = document.createElement("canvas");
+    const size = Math.round(css * dpr);
+    cv.width = cv.height = size;
+    const c = cv.getContext("2d");
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = color;
+    c.beginPath();
+    c.arc(css / 2, css / 2, r, 0, Math.PI * 2);
+    c.fill();
+    return { img: cv, css };
   }
 
   window.addEventListener("pointermove", e => {
@@ -859,11 +878,16 @@ function iniciarParticulas() {
       p.vy *= 0.985;
 
       const brillo = 0.35 + Math.abs(Math.sin(p.fase + t * p.pulso)) * 0.5;
+
+      // El punto se hornea una vez por (color, radio) y se reutiliza cada frame.
+      const clave = p.color + "|" + p.r.toFixed(1);
+      let spr = cacheSpriteParticula.get(clave);
+      if (!spr) {
+        spr = spriteParticula(p.color, p.r);
+        cacheSpriteParticula.set(clave, spr);
+      }
       ctx.globalAlpha = Math.min(brillo, 0.95);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.drawImage(spr.img, p.x - spr.css / 2, p.y - spr.css / 2, spr.css, spr.css);
     }
 
     const limite = 120;
@@ -1140,11 +1164,13 @@ function iniciarConstelacion() {
   if (!canvas || !canvas.getContext) return;
 
   const ctx = canvas.getContext("2d");
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
   let ancho = 0, alto = 0;
   let escala = 1, despx = 0, despy = 0;
   let fondoEstrellas = [];
+  let fondoCanvas = null;
+  const cacheSpriteNodo = new Map();
 
   const puntero = { x: -9999, y: -9999 };
   const COLOR = { blanco: "#EAF6FF", celeste: "#9BD4FF", dorado: "#EFC97A" };
@@ -1476,6 +1502,18 @@ function iniciarConstelacion() {
         a: Math.random() * 0.45 + 0.08
       });
     }
+    /* El fondo es estático: se hornea una vez y se blitea cada frame. */
+    fondoCanvas = document.createElement("canvas");
+    fondoCanvas.width = canvas.width;
+    fondoCanvas.height = canvas.height;
+    const fc = fondoCanvas.getContext("2d");
+    fc.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fc.fillStyle = "#BBD8FF";
+    for (const s of fondoEstrellas) {
+      fc.globalAlpha = s.a;
+      fc.fillRect(s.x, s.y, s.r, s.r);
+    }
+    fc.globalAlpha = 1;
   }
 
   function redimensionar() {
@@ -1504,6 +1542,7 @@ function iniciarConstelacion() {
     despy = (alto - bboxAlto * escala) / 2;
 
     generarFondo();
+    cacheSpriteNodo.clear();
   }
   redimensionar();
   window.addEventListener("resize", redimensionar);
@@ -1562,41 +1601,86 @@ function iniciarConstelacion() {
     const color = p.ix === 0 ? COLOR.blanco : p.ix === 1 ? COLOR.celeste : COLOR.dorado;
     const r = p.radio * (cerca ? 1.9 : 1);
 
+    // Nodo con glow pre-horneado en sprite (los radios difieren ~0.1 px: invisible).
+    const clave = color + "|" + r.toFixed(1) + "|" + (cerca ? 1 : 0);
+    let spr = cacheSpriteNodo.get(clave);
+    if (!spr) {
+      spr = crearSpriteNodo(color, r, cerca);
+      cacheSpriteNodo.set(clave, spr);
+    }
+
     ctx.globalAlpha = Math.min(1, brillo + 0.15) * alpha;
-    ctx.shadowBlur = cerca ? 14 : 7;
-    ctx.shadowColor = "rgba(234,246,255,0.9)";
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.drawImage(spr.aura, x - spr.css / 2, y - spr.css / 2, spr.css, spr.css);
     ctx.globalAlpha = 0.85 * alpha;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.beginPath();
-    ctx.arc(x, y, r * 0.45, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
+    ctx.drawImage(spr.core, x - spr.css / 2, y - spr.css / 2, spr.css, spr.css);
     ctx.globalAlpha = 1;
   }
 
+  /* Hornea las dos capas del nodo (glow + núcleo) junto con su sombra,
+     igual que el dibujo original, para blitear por frame sin shadowBlur. */
+  function crearSpriteNodo(color, r, cerca) {
+    const pad = (cerca ? 14 : 7) + 2;
+    const css = Math.ceil((r * 2 + pad * 2) * dpr) / dpr;
+    const size = Math.round(css * dpr);
+    const sombra = { blur: cerca ? 14 : 7, color: "rgba(234,246,255,0.9)" };
+
+    const aura = document.createElement("canvas");
+    aura.width = aura.height = size;
+    const ca = aura.getContext("2d");
+    ca.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ca.shadowBlur = sombra.blur;
+    ca.shadowColor = sombra.color;
+    ca.fillStyle = color;
+    ca.beginPath();
+    ca.arc(css / 2, css / 2, r, 0, Math.PI * 2);
+    ca.fill();
+
+    const core = document.createElement("canvas");
+    core.width = core.height = size;
+    const cc = core.getContext("2d");
+    cc.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cc.shadowBlur = sombra.blur;
+    cc.shadowColor = sombra.color;
+    cc.fillStyle = "#FFFFFF";
+    cc.beginPath();
+    cc.arc(css / 2, css / 2, r * 0.45, 0, Math.PI * 2);
+    cc.fill();
+    cc.shadowBlur = 0;
+
+    return { aura, core, css };
+  }
+
+  /* Agrupa las aristas en unos pocos trazos (Path2D) por intensidad y alpha:
+     en fase hold hay 2 grupos, en morph los alpha toman pocos valores fijos. */
   function dibujarEdges(constelacion, posiciones, alphaGlobal) {
     if (alphaGlobal <= 0.01) return;
+    const grupos = new Map();
+    const edgeData = constelacion.edges;
+    for (let k = 0; k < edgeData.length; k++) {
+      const [i, j] = edgeData[k];
+      const a = posiciones[i], b = posiciones[j];
+      if (!a || !b) continue;
+      const alphaFinal = alphaGlobal * Math.min(a.alpha, b.alpha);
+      if (alphaFinal <= 0.01) continue;
+      const intensidad = (a.activo || b.activo) ? 0.6 : 0.32;
+      const clave = intensidad * alphaFinal;
+      let grupo = grupos.get(clave);
+      if (!grupo) {
+        grupo = {
+          path: new Path2D(),
+          color: intensidad === 0.6 ? "rgba(234,246,255," : "rgba(155,212,255,"
+        };
+        grupos.set(clave, grupo);
+      }
+      grupo.path.moveTo(a.x, a.y);
+      grupo.path.lineTo(b.x, b.y);
+    }
+    if (grupos.size === 0) return;
     ctx.lineWidth = 0.8;
     ctx.lineCap = "round";
-    constelacion.edges.forEach(([i, j]) => {
-      const a = posiciones[i], b = posiciones[j];
-      if (!a || !b) return;
-      const alphaFinal = alphaGlobal * Math.min(a.alpha, b.alpha);
-      if (alphaFinal <= 0.01) return;
-      const activo = a.activo || b.activo;
-      ctx.strokeStyle = activo
-        ? `rgba(234,246,255,${0.6 * alphaFinal})`
-        : `rgba(155,212,255,${0.32 * alphaFinal})`;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+    grupos.forEach((grupo, alphaFinal) => {
+      ctx.strokeStyle = grupo.color + alphaFinal + ")";
+      ctx.stroke(grupo.path);
     });
   }
 
@@ -1666,12 +1750,7 @@ function iniciarConstelacion() {
   }
 
   function dibujarFondo() {
-    ctx.fillStyle = "#BBD8FF";
-    for (const s of fondoEstrellas) {
-      ctx.globalAlpha = s.a;
-      ctx.fillRect(s.x, s.y, s.r, s.r);
-    }
-    ctx.globalAlpha = 1;
+    if (fondoCanvas) ctx.drawImage(fondoCanvas, 0, 0, ancho, alto);
   }
 
   function animate(tiempoMs) {
@@ -1743,6 +1822,58 @@ function iniciarConstelacion() {
 }
 
 /* ============================================================
+   Menú hamburguesa (móvil): recoge la navegación en un panel.
+   ============================================================ */
+function iniciarMenuMovil() {
+  const toggle = document.getElementById("nav-toggle");
+  const nav = document.getElementById("site-nav");
+  if (!toggle || !nav) return;
+
+  const media = window.matchMedia("(max-width: 768px)");
+
+  const cerrar = () => {
+    nav.classList.remove("is-open");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-label", "Abrir menú");
+  };
+  const alternar = () => {
+    const abierto = nav.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", String(abierto));
+    toggle.setAttribute("aria-label", abierto ? "Cerrar menú" : "Abrir menú");
+  };
+
+  toggle.addEventListener("click", alternar);
+  nav.addEventListener("click", e => {
+    if (e.target.closest("a")) cerrar();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") cerrar();
+  });
+  document.addEventListener("click", e => {
+    if (nav.classList.contains("is-open") && !nav.contains(e.target) && !toggle.contains(e.target)) cerrar();
+  });
+  media.addEventListener("change", e => {
+    if (!e.matches) cerrar();
+  });
+}
+
+/* ============================================================
+   Cinta de palabras (marquee): animar solo cuando se ve.
+   ============================================================ */
+function pausarMarqueeFueraDePantalla() {
+  const track = document.querySelector(".marquee-track");
+  if (!track || !("IntersectionObserver" in window)) return;
+  if (reducirMovimiento()) return; // reduced-motion ya la apaga por CSS.
+
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      track.style.animationPlayState = entry.isIntersecting ? "running" : "paused";
+    });
+  }, { threshold: 0.02 });
+  obs.observe(track);
+}
+
+/* ============================================================
    Carga inicial
    ============================================================ */
 async function init() {
@@ -1752,6 +1883,8 @@ async function init() {
   iniciarScrollEstados();
   iniciarScrollspy();
   iniciarTilt();
+  iniciarMenuMovil();
+  pausarMarqueeFueraDePantalla();
 
   document.getElementById("formulario").addEventListener("submit", manejarEnvioFormulario);
   document.getElementById("descripcion").addEventListener("input", actualizarContadorCaracteres);

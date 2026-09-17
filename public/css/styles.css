@@ -285,6 +285,37 @@ code {
 .admin-link svg { width: 20px; height: 20px; fill: currentColor; }
 .admin-link:hover { color: var(--secondary); border-color: var(--secondary); transform: rotate(15deg) scale(1.1); }
 
+/* Botón de menú hamburguesa: solo visible en pantallas pequeñas. */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 42px;
+  height: 42px;
+  padding: 10px 9px;
+  color: var(--text);
+  background: var(--bg-alt);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.25s var(--ease-spring), border-color 0.2s ease;
+}
+.nav-toggle span {
+  display: block;
+  width: 100%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.3s var(--ease-out), opacity 0.2s ease;
+}
+.nav-toggle:hover { border-color: var(--secondary); }
+.nav-toggle:active { transform: scale(0.92); }
+.nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+
 @keyframes brand-pop {
   from { transform: scale(0) rotate(-30deg); opacity: 0; }
   to { transform: scale(1) rotate(0); opacity: 1; }
@@ -306,7 +337,6 @@ code {
 
 /* Valor por defecto: contenido visible aunque el JS tarde (o falte). */
 [data-scene] { --sp: 0.5; }
-[data-slide] { transform: translateZ(0); }
 
 /* Los [data-slide] se encienden según el paso del scene:
    entrada 0→0.35, reposo 0.35→0.7, salida 0.7→1. */
@@ -359,11 +389,11 @@ code {
 .hero-halo--oro { width: 46vmin; height: 46vmin; right: -6vmin; top: 8vmin; background: radial-gradient(circle, rgba(212,160,23,0.5), transparent 65%); }
 .hero-halo--azul { width: 38vmin; height: 38vmin; left: -8vmin; bottom: 4vmin; background: radial-gradient(circle, rgba(74,123,181,0.42), transparent 65%); }
 
-/* Formas geométricas que viajan con el scroll */
+/* Formas geométricas que viajan con el scroll.
+   El JS eleva a capa propia solo las formas activas según --sp. */
 .hero-shape {
   position: absolute;
   pointer-events: none;
-  will-change: transform;
   z-index: 1;
 }
 .hero-shape--casa { right: max(3vw, 12px); top: 6vh; width: clamp(150px, 26vw, 340px); opacity: 0.9; }
@@ -1192,9 +1222,11 @@ textarea { resize: vertical; }
 
 /* ============================================================
    Scrollytelling — transformaciones por cadena geométrica.
-   El JS asigna estilos con interpolación según --sp.
+   El JS asigna estilos con interpolación según --sp y eleva la
+   capa (will-change) solo en las escenas activas; aquí el valor
+   por defecto no reserva GPU.
    ============================================================ */
-[data-chain] { position: absolute; pointer-events: none; will-change: transform, opacity; }
+[data-chain] { position: absolute; pointer-events: none; }
 
 @keyframes card-in {
   from { opacity: 0; transform: translateY(16px) scale(0.96); }
@@ -1246,6 +1278,40 @@ textarea { resize: vertical; }
   .modal-overlay { background: rgba(20, 15, 10, 0.78); }
 
   .hero-halo { filter: blur(22px); }
+
+  /* En escritorio los pin-scenes recortan sus hijos (overflow en .pin-inner);
+     al aplanarse en móvil los halos sangran y crean scroll horizontal. */
+  .pin-scene { overflow-x: clip; }
+
+  /* Menú hamburguesa: los enlaces se recogen en una tarjeta bajo el header. */
+  .nav-toggle { display: inline-flex; }
+  .site-nav {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    min-width: 15rem;
+    padding: 0.6rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-3);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: transform 0.25s var(--ease-out), opacity 0.2s ease, visibility 0.2s ease;
+  }
+  .site-nav.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .site-nav .nav-link { display: block; text-align: left; padding: 0.8em 1em; }
+  .site-nav .nav-link::after { left: 1em; right: auto; width: 2.2em; }
 }
 
 /* ============================================================
